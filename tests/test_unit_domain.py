@@ -112,9 +112,41 @@ class TestValidators:
             pass
 
     def test_validate_date_only(self):
-        assert validate_date_only("2020-01-31", "due_date") == "2020-01-31"
+        # Valid Gregorian dates are accepted verbatim.
+        for good in ("2020-01-31", "2028-02-29", "2026-05-15", "1999-12-31", "2000-02-29"):
+            assert validate_date_only(good, "due_date") == good, good
         assert validate_date_only(None, "due_date") is None
-        for bad in ("2020-13-01", "2020-02-30", "2020-01-01T00:00:00Z", "x", "2020-01-01Z"):
+        for bad in ("2020-13-01", "2020-02-30", "2027-02-29", "2026-04-31",
+                    "2020-01-01T00:00:00Z", "2026-11-20 12:00:00",
+                    "01-01-2030", "2030/01/01", "2030-1-1", "x", "2020-01-01Z"):
+            try:
+                validate_date_only(bad, "due_date")
+                raise AssertionError(f"should reject {bad}")
+            except Validation:
+                pass
+
+    def test_validate_date_only_null_and_type_rejection(self):
+        # Non-string, non-null values are rejected.
+        for bad in (1, 20260515, 0.5, ["2026-05-15"], {"due_date": "2026-05-15"}, True):
+            try:
+                validate_date_only(bad, "due_date")
+                raise AssertionError(f"should reject {bad!r}")
+            except Validation:
+                pass
+
+    def test_validate_date_only_whitespace_rejected(self):
+        for bad in (" 2026-05-15", "2026-05-15 ", "\t2026-05-15\n"):
+            try:
+                validate_date_only(bad, "due_date")
+                raise AssertionError(f"should reject {bad!r}")
+            except Validation:
+                pass
+
+    def test_validate_date_only_century_bounds(self):
+        # Gregorian calendar: 0001-01-01 through 9999-12-31.
+        assert validate_date_only("0001-01-01", "due_date") == "0001-01-01"
+        assert validate_date_only("9999-12-31", "due_date") == "9999-12-31"
+        for bad in ("0000-12-31", "10000-01-01"):
             try:
                 validate_date_only(bad, "due_date")
                 raise AssertionError(f"should reject {bad}")

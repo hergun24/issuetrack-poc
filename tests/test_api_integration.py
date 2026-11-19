@@ -676,6 +676,88 @@ def test_activity_vocab_all_sixteen(env, admin, workspace):
         assert a in expected, f"non-canonical action: {a}"
 
 
+# ---------------- due_date strict validation (Stage C) ----------------
+
+def _due_validation_err(r, label):
+    """422 with the standard VALIDATION_ERROR envelope."""
+    assert r.status_code == VALIDATION, f"{label} -> {r.status_code}: {r.text}"
+    assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_issue_create_due_date_strict_validation(env, admin, workspace):
+    c, ws, tok = env["client"], workspace, admin[0]
+    proj = _make_project(c, tok, ws)
+
+    def create(due):
+        return c.post(f"/api/workspaces/{ws['id']}/issues",
+                      json={"title": "t", "project_id": proj["id"], "due_date": due},
+                      headers=auth(tok))
+
+    # Rule 1: valid date-only values accepted (201), persisted verbatim.
+    for good in ("2028-02-29", "2026-05-15"):
+        r = create(good)
+        assert r.status_code == 201, f"due_date={good} -> {r.status_code}: {r.text}"
+        assert r.json()["due_date"] == good
+    # Rule 6: past dates remain valid.
+    assert create(PAST).status_code == 201
+    # Rule 2: null accepted.
+    assert create(None).status_code == 201
+    # Rule 3: invalid date formats -> 422.
+    for bad in ("01-01-2030", "2030/01/01", "2030-1-1"):
+        _due_validation_err(create(bad), f"create due_date={bad}")
+    # Rule 4: impossible calendar dates -> 422.
+    for bad in ("2027-02-29", "2026-13-01", "2026-04-31"):
+        _due_validation_err(create(bad), f"create due_date={bad}")
+    # Rule 5: timestamp strings -> 422.
+    for bad in ("2030-01-01T00:00:00Z", "2026-11-20 12:00:00"):
+        _due_validation_err(create(bad), f"create due_date={bad}")
+
+
+def test_issue_update_due_date_strict_validation(env, admin, workspace):
+    c, ws, tok = env["client"], workspace, admin[0]
+    proj = _make_project(c, tok, ws)
+    iss = _make_issue(c, tok, ws, proj)
+
+    def patch(due):
+        return c.patch(f"/api/workspaces/{ws['id']}/issues/{iss['id']}",
+                       json={"due_date": due}, headers=auth(tok))
+
+    # Rule 1: valid values accepted and persist across subsequent reads.
+    r = patch("2028-02-29")
+    assert r.status_code == 200 and r.json()["due_date"] == "2028-02-29"
+    got = c.get(f"/api/workspaces/{ws['id']}/issues/{iss['id']}", headers=auth(tok))
+    assert got.json()["due_date"] == "2028-02-29"
+    r = patch("2026-05-15")
+    assert r.status_code == 200 and r.json()["due_date"] == "2026-05-15"
+    # Rule 6: past date accepted on update too.
+    assert patch(PAST).status_code == 200
+    # Rule 2: null accepted.
+    r = patch(None)
+    assert r.status_code == 200 and r.json()["due_date"] is None
+    # Rules 3/4/5: all rejected with 422, previous value untouched.
+    assert patch("2026-05-15").status_code == 200
+    for bad in ("01-01-2030", "2030/01/01", "2030-1-1",
+                "2027-02-29", "2026-13-01", "2026-04-31",
+                "2030-01-01T00:00:00Z", "2026-11-20 12:00:00"):
+        _due_validation_err(patch(bad), f"update due_date={bad}")
+    got = c.get(f"/api/workspaces/{ws['id']}/issues/{iss['id']}", headers=auth(tok))
+    assert got.json()["due_date"] == "2026-05-15"
+
+
+def test_dashboard_overdue_rule_unchanged_with_valid_dates(env, admin, workspace):
+    """Rule 7: due-today is NOT overdue (UTC rule); past is overdue."""
+    c, ws, tok = env["client"], workspace, admin[0]
+    p = _make_project(c, tok, ws)
+    _make_issue(c, tok, ws, p, status="OPEN", due_date=PAST)   # overdue
+    _make_issue(c, tok, ws, p, status="OPEN", due_date=TODAY)  # NOT overdue
+    d = c.get(f"/api/workspaces/{ws['id']}/dashboard", headers=auth(tok))
+    assert d.status_code == 200, d.text
+    body = d.json()
+    assert body["status_totals"]["OPEN"] == 2
+    assert body["overdue_count"] == 1
+    assert len(body["overdue_issue_ids"]) == 1
+
+
 # ---------------- dashboard ----------------
 
 def test_dashboard_counts_and_overdue_rule(env, admin, workspace):
