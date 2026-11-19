@@ -4,6 +4,9 @@ All functions take an opened DB connection (caller manages transaction)
 and raise ApiError subclasses; API layer is a thin adapter.
 """
 
+import datetime
+import re
+
 from typing import Optional
 
 from .db import DB
@@ -72,16 +75,22 @@ def validate_str(value, field_name, min_len, max_len, required=True, default="",
     return value
 
 
+_DATE_ONLY_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
 def validate_date_only(value, field_name):
-    """YYYY-MM-DD or None; past dates allowed."""
+    """Strict Gregorian date-only validator: null or exact 'YYYY-MM-DD'.
+
+    Accepts only `None` or a 10-character string matching the exact
+    `YYYY-MM-DD` layout that is a real Gregorian calendar date
+    (e.g. `2028-02-29` valid, `2027-02-29` rejected). Past dates are
+    allowed. Timestamps, other layouts, whitespace, and non-string
+    values are rejected with a 422 VALIDATION_ERROR.
+    """
     if value is None:
         return None
-    if not isinstance(value, str):
-        raise Validation("Invalid field type.", [Detail(field_name, "Must be 'YYYY-MM-DD' or null.")])
-    import re
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+    if not isinstance(value, str) or not _DATE_ONLY_RE.fullmatch(value):
         raise Validation("Malformed date.", [Detail(field_name, "Must be 'YYYY-MM-DD' or null.")])
-    import datetime
     try:
         datetime.date.fromisoformat(value)
     except ValueError:
