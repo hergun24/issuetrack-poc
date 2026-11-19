@@ -1,0 +1,23 @@
+INFO:     Started server process [4453]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:46526 - "GET /api/health HTTP/1.1" 200 OK
+{"ts": "2026-11-19T07:09:51", "level": "INFO", "logger": "issuetrack", "msg": "auth.register.ok", "user_id": "68d94dcaf77480c8"}
+INFO:     127.0.0.1:46532 - "POST /api/auth/register HTTP/1.1" 201 Created
+INFO:     127.0.0.1:51934 - "POST /api/auth/register HTTP/1.1" 422 Unprocessable Entity
+INFO:     127.0.0.1:38762 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41978 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41990 - "GET /api/health?probe=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54244 - "GET /api/health?probe=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54252 - "GET /api/health?probe=3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54268 - "GET /api/health?probe=4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54284 - "GET /api/health?probe=5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54294 - "GET /api/health?probe=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54302 - "GET /api/health?probe=7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54306 - "GET /api/health?probe=8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54312 - "GET /api/health HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4453]

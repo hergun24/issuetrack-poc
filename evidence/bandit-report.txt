@@ -1,0 +1,77 @@
+[main]	INFO	profile include tests: None
+[main]	INFO	profile exclude tests: None
+[main]	INFO	cli include tests: None
+[main]	INFO	cli exclude tests: None
+[main]	INFO	running on Python 3.12.11
+Run started:2026-11-19 08:26:51.042146+00:00
+
+Test results:
+>> Issue: [B104:hardcoded_bind_all_interfaces] Possible binding to all interfaces.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-605 (https://cwe.mitre.org/data/definitions/605.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b104_hardcoded_bind_all_interfaces.html
+   Location: ./run.py:19:26
+18	if __name__ == "__main__":
+19	    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+--------------------------------------------------
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-89 (https://cwe.mitre.org/data/definitions/89.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b608_hardcoded_sql_expressions.html
+   Location: app/api.py:475:21
+474	        cols = ", ".join(f"{c}=?" for c in updates)
+475	        tx.execute(f"UPDATE projects SET {cols} WHERE id=?",
+476	                   (*updates.values(), project_id))
+
+--------------------------------------------------
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-89 (https://cwe.mitre.org/data/definitions/89.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b608_hardcoded_sql_expressions.html
+   Location: app/api.py:551:12
+550	    rows = conn.execute(
+551	        f"""SELECT i.*, p.archived AS project_archived FROM issues i
+552	            JOIN projects p ON p.id=i.project_id WHERE {where_sql}
+553	            ORDER BY i.created_at DESC, i.id DESC""",
+554	        (*params,)).fetchall()
+
+--------------------------------------------------
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.
+   Severity: Medium   Confidence: Medium
+   CWE: CWE-89 (https://cwe.mitre.org/data/definitions/89.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b608_hardcoded_sql_expressions.html
+   Location: app/api.py:678:21
+677	        cols = ", ".join(f"{c}=?" for c in updates)
+678	        tx.execute(f"UPDATE issues SET {cols} WHERE id=?", (*updates.values(), issue_id))
+679	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html
+   Location: app/domain.py:114:4
+113	def add_activity(conn, workspace_id, actor_id, action, target_type, target_id):
+114	    assert action in CANONICAL_ACTIONS, action
+115	    row = conn.execute(
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 1387
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 0
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 1
+		Medium: 4
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 4
+		High: 1
+Files skipped (0):

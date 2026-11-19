@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IssueTrack Lite</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="topbar">
+    <span class="brand">IssueTrack&nbsp;Lite</span>
+    <nav id="ws-nav" aria-label="Workspace"></nav>
+    <span id="auth-area"></span>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <!-- Auth view -->
+    <section id="view-auth" class="card" aria-live="polite">
+      <form id="login-form" class="form" aria-label="Login">
+        <h1 id="auth-title">Sign in</h1>
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input id="login-email" name="email" type="email" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="login-password">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128">
+        </div>
+        <button type="submit">Sign in</button>
+        <p id="auth-status" class="form-status" role="status"></p>
+      </form>
+
+      <form id="register-form" class="form hidden" aria-label="Register">
+        <h1>Create account</h1>
+        <div class="field">
+          <label for="reg-email">Email</label>
+          <input id="reg-email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="reg-password">Password (8–128 characters)</label>
+          <input id="reg-password" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="128">
+        </div>
+        <div class="field">
+          <label for="reg-name">Display name</label>
+          <input id="reg-name" name="display_name" type="text" maxlength="100" required>
+        </div>
+        <button type="submit">Create account</button>
+        <p id="reg-status" class="form-status" role="status"></p>
+      </form>
+      <div class="auth-links">
+        <a id="to-register" href="#">No account? Register</a>
+        <a id="to-login" href="#" class="hidden">Have an account? Sign in</a>
+      </div>
+    </section>
+
+    <!-- Workspace picker (when multiple workspaces) -->
+    <section id="view-pick" class="card hidden" aria-live="polite">
+      <h1>Select a workspace</h1>
+      <ul id="ws-list" class="ws-list"></ul>
+    </section>
+
+    <!-- App views -->
+    <section id="view-dash" class="hidden">
+      <h1>Dashboard</h1>
+      <p id="dash-loading" class="loading" role="status">Loading dashboard…</p>
+      <div id="dash-content" class="hidden">
+        <section class="dash-box" aria-labelledby="dash-status-h">
+          <h2 id="dash-status-h">By status</h2>
+          <ul id="dash-status" class="stat-list"></ul>
+        </section>
+        <section class="dash-box" aria-labelledby="dash-prio-h">
+          <h2 id="dash-prio-h">By priority</h2>
+          <ul id="dash-prio" class="stat-list"></ul>
+        </section>
+        <section class="dash-box" aria-labelledby="dash-overdue-h">
+          <h2 id="dash-overdue-h">Overdue</h2>
+          <div id="dash-overdue" class="issue-list"></div>
+        </section>
+      </div>
+      <p id="dash-error" class="error hidden" role="alert"></p>
+    </section>
+
+    <section id="view-projects" class="hidden">
+      <h1>Projects</h1>
+      <p id="prj-loading" class="loading" role="status">Loading projects…</p>
+      <div id="prj-content" class="hidden">
+        <form id="prj-form" class="form" aria-label="Create project">
+          <div class="field"><label for="prj-name">Project name</label>
+            <input id="prj-name" name="name" type="text" maxlength="200" required></div>
+          <div class="field"><label for="prj-desc">Description <span class="opt">(optional)</span></label>
+            <input id="prj-desc" name="description" type="text" maxlength="2000"></div>
+          <button type="submit">Create project</button>
+          <p id="prj-status" class="form-status" role="status"></p>
+        </form>
+        <ul id="prj-list" class="prj-list"></ul>
+      </div>
+      <p id="prj-error" class="error hidden" role="alert"></p>
+    </section>
+
+    <section id="view-issues" class="hidden">
+      <div class="issues-head">
+        <h1>Issues</h1>
+        <button id="new-issue-btn" type="button">New issue</button>
+      </div>
+      <form id="issue-form" class="form hidden" aria-label="Create issue">
+        <div class="field"><label for="is-title">Title</label>
+          <input id="is-title" name="title" type="text" maxlength="200" required></div>
+        <div class="field"><label for="is-desc">Description <span class="opt">(optional)</span></label>
+          <input id="is-desc" name="description" type="text" maxlength="5000"></div>
+        <div class="field"><label for="is-type">Type</label>
+          <select id="is-type" name="type"><option value="BUG">Bug</option><option value="TASK">Task</option></select></div>
+        <div class="field"><label for="is-prio">Priority</label>
+          <select id="is-prio" name="priority"><option value="LOW">Low</option><option value="MEDIUM" selected>Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></div>
+        <div class="field"><label for="is-assignee">Assignee</label>
+          <select id="is-assignee" name="assignee_id"></select></div>
+        <div class="field"><label for="is-due">Due date <span class="opt">(optional)</span></label>
+          <input id="is-due" name="due_date" type="date"></div>
+        <button type="submit">Create issue</button>
+        <p id="is-status" class="form-status" role="status"></p>
+      </form>
+
+      <form id="issue-filters" class="filters" aria-label="Filter issues">
+        <label>Status
+          <select id="f-status"><option value="">Any</option><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option><option value="RESOLVED">Resolved</option><option value="CLOSED">Closed</option></select>
+        </label>
+        <label>Priority
+          <select id="f-priority"><option value="">Any</option><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select>
+        </label>
+        <label>Overdue
+          <select id="f-overdue"><option value="">Any</option><option value="true">Overdue</option><option value="false">Not overdue</option></select>
+        </label>
+        <button type="submit" class="secondary">Apply filters</button>
+      </form>
+
+      <p id="issues-loading" class="loading" role="status">Loading issues…</p>
+      <div id="issues-content" class="hidden">
+        <p id="issues-empty" class="empty hidden">No issues match.</p>
+        <ul id="issue-list" class="issue-list"></ul>
+        <nav id="issue-pager" class="pager" aria-label="Issue pages"></nav>
+      </div>
+      <p id="issues-error" class="error hidden" role="alert"></p>
+    </section>
+
+    <section id="view-activity" class="hidden">
+      <h1>Activity</h1>
+      <p id="act-loading" class="loading" role="status">Loading activity…</p>
+      <div id="act-content" class="hidden">
+        <ul id="activity-list" class="activity-list"></ul>
+        <nav id="act-pager" class="pager" aria-label="Activity pages"></nav>
+      </div>
+      <p id="act-error" class="error hidden" role="alert"></p>
+    </section>
+
+    <!-- Issue detail modal (dialog) -->
+    <dialog id="issue-detail" aria-labelledby="detail-title">
+      <form method="dialog" id="detail-form">
+        <h2 id="detail-title">Issue</h2>
+        <p id="detail-body" class="detail-meta"></p>
+        <dl id="detail-fields"></dl>
+        <div class="field">
+          <label for="detail-status">Status</label>
+          <select id="detail-status"><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option><option value="RESOLVED">Resolved</option><option value="CLOSED">Closed</option></select>
+        </div>
+        <div class="field">
+          <label for="detail-assignee">Assignee</label>
+          <select id="detail-assignee"></select>
+        </div>
+        <p id="detail-actions"></p>
+        <h3>Comments</h3>
+        <ul id="detail-comments"></ul>
+        <form id="comment-form" class="form">
+          <label for="comment-body">Add comment</label>
+          <textarea id="comment-body" name="body" rows="3" maxlength="2000" required></textarea>
+          <button type="submit">Post comment</button>
+          <p id="comment-status" class="form-status" role="status"></p>
+        </form>
+        <menu>
+          <button type="submit" value="close">Close</button>
+          <button type="button" id="detail-save">Save changes</button>
+          <button type="button" id="detail-delete" class="danger hidden">Delete issue</button>
+        </menu>
+      </form>
+    </dialog>
+  </main>
+
+  <nav id="main-tabs" class="tabs" aria-label="Main sections"></nav>
+  <script src="/app.js"></script>
+</body>
+</html>

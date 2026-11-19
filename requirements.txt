@@ -1,0 +1,12 @@
+# IssueTrack Lite runtime dependencies
+fastapi==0.165.0
+starlette==1.10.0
+uvicorn==0.54.0
+pydantic==2.14.3
+bcrypt==5.0.0
+
+# Development / testing
+pytest==9.2.0
+httpx==0.28.1
+flake8==7.5.0
+bandit==1.9.4
