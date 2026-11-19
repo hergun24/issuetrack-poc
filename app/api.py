@@ -512,7 +512,9 @@ def _overdue(due_date, status, project_archived) -> bool:
         return False
     if project_archived:
         return False
-    return due_date <= utc_today()
+    # Overdue iff due date is strictly before today in UTC: a due date equal
+    # to today's UTC date is not overdue until UTC midnight passes.
+    return due_date < utc_today()
 
 
 @router.get("/workspaces/{workspace_id}/issues")
