@@ -1,0 +1,54 @@
+name: "✨ Autonomous Feature Specification (Gate G-01)"
+description: "Template penugasan fitur baru untuk dikerjakan AI Agent di Autonomous Zone"
+title: "[FEAT]: "
+labels: ["agent:backlog", "zone:autonomous"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 📋 Human Inception Gate (Gate G-01)
+        Definisikan kebutuhan bisnis, kontrak API, dan acceptance criteria sebelum agen mengeksekusi kode di sandbox.
+
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: 1. Problem Statement & User Story
+      description: Apa masalah yang ingin diselesaikan dan untuk siapa fitur ini dibuat?
+      placeholder: "Sebagai pengguna workspace, saya ingin ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: api_contract
+    attributes:
+      label: 2. API & Domain Contract Invariants
+      description: Endpoint REST, skema request/response, dan batasan validasi.
+      placeholder: |
+        - Endpoint: POST /api/workspaces/{id}/...
+        - Request Body: {"field": "..."}
+        - Error Response: 422 VALIDATION_ERROR jika invalid.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 3. Acceptance Criteria (AC)
+      description: Kriteria lulus pengujian (harus biner PASS/FAIL).
+      value: |
+        - [ ] AC-01: Nilai valid diterima dengan HTTP 200/201.
+        - [ ] AC-02: Nilai malformed ditolak dengan HTTP 422 VALIDATION_ERROR.
+        - [ ] AC-03: Menambahkan unit dan integration test otomatis.
+    validations:
+      required: true
+
+  - type: textarea
+    id: guardrails
+    attributes:
+      label: 4. Non-Functional Guardrails & Safety
+      value: |
+        - Tenant Isolation: Tidak boleh ada kebocoran data antar workspace/tenant.
+        - Zero Regression: Semua 64 tes yang ada wajib tetap 100% PASS.
+        - Code Quality: 0 flake8 errors, clean bandit security audit.
+    validations:
+      required: true

@@ -1,0 +1,44 @@
+name: "🚨 Incident / Bug Triage (Pola Stage B)"
+description: "Template pelaporan insiden produksi atau temuan UAT untuk triase bedah otonom"
+title: "[INCIDENT]: "
+labels: ["incident", "zone:autonomous", "severity:P1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 🛑 Incident Hotfix Gate
+        Formulir ini memicu alur triase otonom: Reproduksi -> Akar Masalah -> Minimal Hotfix -> Regresi Bersih -> Disposisi.
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: 1. Symptom & Blast Radius
+      description: Apa gejala error yang teramati, di endpoint mana, dan dampaknya pada user?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: 2. Steps to Reproduce
+      description: Payload atau langkah untuk mereproduksi cacat.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_vs_observed
+    attributes:
+      label: 3. Expected vs Observed Behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: hotfix_constraints
+    attributes:
+      label: 4. Hotfix Constraints
+      value: |
+        - Surgical fix only: Perbaiki hanya baris yang rusak, dilarang refactor modul lain.
+        - Wajib buat tes reproduksi otomatis yang membuktikan kegagalan pre-fix.
+        - Dokumentasikan temuan di `evidence/INCIDENT-HOTFIX-DISPOSITION.md`.
+    validations:
+      required: true
