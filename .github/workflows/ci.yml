@@ -8,7 +8,7 @@ on:
 
 jobs:
   test_and_gate:
-    name: Regression Suite & Contract Gate
+    name: "Regression Suite and Contract Gate"
     runs-on: ubuntu-latest
 
     steps:
