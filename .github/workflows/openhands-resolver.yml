@@ -2,7 +2,7 @@ name: "OpenHands Autonomous Issue Resolver"
 
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled]
   issue_comment:
     types: [created]
 
@@ -14,8 +14,7 @@ permissions:
 jobs:
   call-openhands-resolver:
     if: |
-      github.event.label.name == 'agent:run' ||
-      github.event.label.name == 'fix-me' ||
+      (github.event_name == 'issues' && (contains(github.event.issue.labels.*.name, 'agent:run') || contains(github.event.issue.labels.*.name, 'fix-me') || github.event.label.name == 'agent:run' || github.event.label.name == 'fix-me')) ||
       (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '@openhands-agent'))
     uses: All-Hands-AI/openhands-resolver/.github/workflows/openhands-resolver.yml@main
     with:
