@@ -357,7 +357,7 @@ def test_project_lifecycle(env, admin, workspace):
     r = c.patch(f"/api/workspaces/{ws['id']}/projects/{p2['id']}", json={"archived": True}, headers=auth(tok))
     assert r.status_code == 200 and r.json()["archived"] is True
     r = c.post(f"/api/workspaces/{ws['id']}/issues",
-               json={"title": "x", "project_id": p2["id"]}, headers=auth(tok))
+               json={"title": "arched-write", "project_id": p2["id"]}, headers=auth(tok))
     assert r.status_code == 409
     r = c.patch(f"/api/workspaces/{ws['id']}/projects/{p2['id']}", json={"archived": False}, headers=auth(tok))
     assert r.status_code == 200 and r.json()["archived"] is False
@@ -381,7 +381,7 @@ def test_issue_create_and_get(env, admin, workspace):
     assert r.status_code == 200 and r.json()["title"] == iss["title"]
     # defaults
     iss2 = c.post(f"/api/workspaces/{ws['id']}/issues",
-                  json={"title": "t", "project_id": proj["id"]}, headers=auth(tok)).json()
+                  json={"title": "tst", "project_id": proj["id"]}, headers=auth(tok)).json()
     assert iss2["type"] == "BUG" and iss2["priority"] == "MEDIUM" and iss2["status"] == "OPEN"
     # validation: empty title
     r = c.post(f"/api/workspaces/{ws['id']}/issues",
@@ -389,24 +389,71 @@ def test_issue_create_and_get(env, admin, workspace):
     assert r.status_code == VALIDATION
     # unknown project -> 404
     r = c.post(f"/api/workspaces/{ws['id']}/issues",
-               json={"title": "t", "project_id": "no-such-project"}, headers=auth(tok))
+               json={"title": "tst", "project_id": "no-such-project"}, headers=auth(tok))
     assert r.status_code == 404
     # bad due_date -> 422
     for bad in ["2021-13-01", "2021-01-01T00:00:00Z", "01-01-2021"]:
         r = c.post(f"/api/workspaces/{ws['id']}/issues",
-                   json={"title": "t", "project_id": proj["id"], "due_date": bad}, headers=auth(tok))
+                   json={"title": "tst", "project_id": proj["id"], "due_date": bad}, headers=auth(tok))
         assert r.status_code == VALIDATION, f"due_date={bad} -> {r.status_code}"
     # bad enum values -> 422
     r = c.post(f"/api/workspaces/{ws['id']}/issues",
-               json={"title": "t", "project_id": proj["id"], "type": "EPIC"}, headers=auth(tok))
+               json={"title": "tst", "project_id": proj["id"], "type": "EPIC"}, headers=auth(tok))
     assert r.status_code == VALIDATION
     r = c.post(f"/api/workspaces/{ws['id']}/issues",
-               json={"title": "t", "project_id": proj["id"], "priority": "SUPER"}, headers=auth(tok))
+               json={"title": "tst", "project_id": proj["id"], "priority": "SUPER"}, headers=auth(tok))
     assert r.status_code == VALIDATION
     # past due dates are valid
     r = c.post(f"/api/workspaces/{ws['id']}/issues",
-               json={"title": "t", "project_id": proj["id"], "due_date": PAST}, headers=auth(tok))
+               json={"title": "tst", "project_id": proj["id"], "due_date": PAST}, headers=auth(tok))
     assert r.status_code == 201
+
+
+def test_issue_title_min_length_validation(env, admin, workspace):
+    """Issue #1: issue title must have >= 3 non-whitespace chars after strip.
+
+    - AC-01: valid titles ('Fix login bug', 'API') accepted with 201 (create) / 200 (update).
+    - AC-02: empty, whitespace-only, or < 3 char titles rejected with 422 VALIDATION_ERROR.
+    """
+    c, ws, tok = env["client"], workspace, admin[0]
+    proj = _make_project(c, tok, ws)
+
+    def create(title):
+        return c.post(f"/api/workspaces/{ws['id']}/issues",
+                      json={"title": title, "project_id": proj["id"]}, headers=auth(tok))
+
+    # AC-01: valid titles accepted on create
+    for good in ("Fix login bug", "API", "abc"):
+        r = create(good)
+        assert r.status_code == 201, f"title={good!r} -> {r.status_code}: {r.text}"
+        assert r.json()["title"] == good
+
+    # AC-02: rejected titles on create
+    for bad in ("", "   ", "ab", "  x  "):
+        r = create(bad)
+        assert r.status_code == VALIDATION, f"title={bad!r} -> {r.status_code}: {r.text}"
+        assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+
+    # valid create to use for patch tests
+    iss = create("API").json()
+    patch_url = f"/api/workspaces/{ws['id']}/issues/{iss['id']}"
+
+    def patch(title):
+        return c.patch(patch_url, json={"title": title}, headers=auth(tok))
+
+    # AC-01: valid titles accepted on update
+    for good in ("Fix login bug", "API", "brand-new"):
+        r = patch(good)
+        assert r.status_code == 200, f"title={good!r} -> {r.status_code}: {r.text}"
+        assert r.json()["title"] == good
+
+    # AC-02: rejected titles on update; original title untouched
+    for bad in ("", "   ", "ab", "  x  "):
+        r = patch(bad)
+        assert r.status_code == VALIDATION, f"title={bad!r} -> {r.status_code}: {r.text}"
+        assert r.json()["error"]["code"] == "VALIDATION_ERROR"
+    got = c.get(patch_url, headers=auth(tok)).json()
+    assert got["title"] == "brand-new"
 
 
 def test_issue_patch_events_and_rules(env, admin, workspace, member):
@@ -637,7 +684,7 @@ def test_activity_vocab_all_sixteen(env, admin, workspace):
     mid = user_id_for(env, m_tok)
     iss = _make_issue(c, tok, ws, proj, assignee_id=mid)
     c.patch(f"/api/workspaces/{ws['id']}/issues/{iss['id']}", json={"status": "IN_PROGRESS"}, headers=auth(tok))
-    c.patch(f"/api/workspaces/{ws['id']}/issues/{iss['id']}", json={"title": "t2"}, headers=auth(tok))
+    c.patch(f"/api/workspaces/{ws['id']}/issues/{iss['id']}", json={"title": "new-title"}, headers=auth(tok))
     c.patch(f"/api/workspaces/{ws['id']}/issues/{iss['id']}", json={"assignee_id": None}, headers=auth(tok))
     iss2 = _make_issue(c, tok, ws, proj)
     c.post(f"/api/workspaces/{ws['id']}/issues/{iss2['id']}/comments", json={"body": "cc"}, headers=auth(tok))
@@ -690,7 +737,7 @@ def test_issue_create_due_date_strict_validation(env, admin, workspace):
 
     def create(due):
         return c.post(f"/api/workspaces/{ws['id']}/issues",
-                      json={"title": "t", "project_id": proj["id"], "due_date": due},
+                      json={"title": "tst", "project_id": proj["id"], "due_date": due},
                       headers=auth(tok))
 
     # Rule 1: valid date-only values accepted (201), persisted verbatim.
