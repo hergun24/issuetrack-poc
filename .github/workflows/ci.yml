@@ -26,7 +26,7 @@ jobs:
           pip install -r requirements.txt
           pip install pytest flake8 bandit
 
-      - name: Run Code Style & Linter Check (0 errors tolerance)
+      - name: Run Code Style and Linter Check (0 errors tolerance)
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
