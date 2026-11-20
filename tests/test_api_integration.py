@@ -104,6 +104,18 @@ def test_health(env):
     assert r.json() == {"status": "ok"}
 
 
+# ---------------- version ----------------
+
+def test_version_public_unauthenticated(env):
+    r = env["client"].get("/api/version")
+    assert r.status_code == 200
+    assert r.json() == {
+        "app": "IssueTrack Lite",
+        "version": "0.2.4",
+        "status": "active",
+    }
+
+
 # ---------------- auth ----------------
 
 def test_register_returns_user_only(env):
