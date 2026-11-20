@@ -1,3 +1,154 @@
+# Incident Hotfix Disposition — INC-8501
+
+| Field | Value |
+|-------|-------|
+| **Incident** | INC-8501 (Issue #3, MEDIUM PRIORITY) |
+| **Component** | Backend API — Issue Description Normalization (`app/api.py` → `_optional_desc`) |
+| **Reported** | 2026-11-20 (UTC) |
+| **Disposition date** | 2026-11-20 (UTC) |
+| **Status** | **RESOLVED — hotfix applied, verified, zero regression** |
+| **Changed file** | `app/api.py` (single function: `_optional_desc`) |
+| **New tests** | `tests/test_unit_domain.py::TestOptionalDescNormalization` (6 unit tests) + `tests/test_api_integration.py::test_issue_description_normalization` (1 integration test) |
+
+---
+
+## 1. Triage Findings (INC-8501)
+
+**Symptom.** UAT and production audit revealed that the issue `description`
+field accepted whitespace-only strings (e.g. `'   '`, `'\t\n   '`) and stored
+untrimmed strings (e.g. `'  some details  '`) verbatim into the database,
+polluting the data and breaking UI display.
+
+**Affected surfaces.** Both write paths funnel through the single helper
+`_optional_desc()` in `app/api.py`:
+
+- `POST /api/workspaces/{wid}/issues` (create) → `description = _optional_desc(payload.description)`
+- `PATCH /api/workspaces/{wid}/issues/{issue_id}` (update) → `new_desc = _optional_desc(payload.description)`
+
+Because both endpoints call the *same* helper, the fix is localized to that
+one function and covers both endpoints at once.
+
+**Root cause.** `_optional_desc` returned the raw string without stripping
+leading/trailing whitespace and never normalized empty/whitespace-only input
+to `None`, so both `'   '` and `'  some details  '` were persisted verbatim.
+
+---
+
+## 2. Root Cause Analysis (INC-8501)
+
+Pre-fix code in `app/api.py`:
+
+```python
+def _optional_desc(description):
+    if description is None:
+        return None
+    if not isinstance(description, str):
+        raise Validation("Invalid field type.", [Detail("description", "Must be a string.")])
+    if len(description) > MAX_DESC:
+        raise Validation("Validation error.", [
+            Detail("description", f"Must be at most {MAX_DESC} characters.")])
+    return description
+```
+
+Two missing normalization steps:
+
+1. No `.strip()` — surrounding whitespace was persisted verbatim.
+2. No empty-after-strip check — whitespace-only strings (`'   '`, `'\t\n'`)
+   were stored as-is instead of being normalized to `None` (JSON `null`).
+
+The `MAX_DESC` limit was also applied to the un-stripped value, which is
+incorrect after the strip step (limit must apply to the stored value).
+
+**Fix (surgical, single function):**
+
+```python
+def _optional_desc(description):
+    if description is None:
+        return None
+    if not isinstance(description, str):
+        raise Validation("Invalid field type.", [Detail("description", "Must be a string.")])
+    stripped = description.strip()
+    if not stripped:
+        return None
+    if len(stripped) > MAX_DESC:
+        raise Validation("Validation error.", [
+            Detail("description", f"Must be at most {MAX_DESC} characters.")])
+    return stripped
+```
+
+Contract invariants now enforced:
+
+- Leading/trailing whitespace stripped from `description`.
+- Stripped result empty (`""`) → normalized to `None`.
+- `'  Fix step 1  '` → stored as `'Fix step 1'`.
+- Explicit `None` or omitted field → remains `None`.
+- Applies identically on both create (POST) and update (PATCH).
+- `MAX_DESC` enforced on the stripped value.
+
+---
+
+## 3. Test Evidence (INC-8501)
+
+### 3.1 Targeted reproduction + normalization tests
+
+Unit — `tests/test_unit_domain.py::TestOptionalDescNormalization` (6 tests):
+
+| Test | Coverage |
+|------|----------|
+| `test_explicit_none_stays_none` | `None` → `None` |
+| `test_whitespace_only_normalizes_to_none` | `'   '`, `'\t\n   '`, `'\n\t \n'`, `' \t '` → `None` (defect reproduction) |
+| `test_valid_description_trimmed` | `'  Fix step 1  '` → `'Fix step 1'` |
+| `test_internal_whitespace_preserved` | internal spaces/newlines preserved |
+| `test_non_string_rejected` | non-strings still rejected with `Validation` |
+| `test_max_desc_limit_enforced_on_stripped_value` | limit enforced on stripped value |
+
+Integration — `tests/test_api_integration.py::test_issue_description_normalization`
+exercises the real REST contract end-to-end:
+
+- **POST** create: whitespace-only (`'   '`, `'\t\n   '`) → `description: null`;
+  untrimmed `'  Fix step 1  '` → stored `'Fix step 1'`;
+  omitted / explicit `None` → `null`.
+- **PATCH** update: whitespace-only clears a pre-existing description to `null`;
+  explicit `None` → `null`; untrimmed value trimmed on store;
+  unrelated field patch preserves the existing valid description;
+  stored value round-trips via GET.
+
+### 3.2 Full regression suite
+
+```
+$ python -m pytest -q
+73 passed, 1 warning in 44.03s
+```
+
+**All 73 tests pass (66 pre-existing + 7 new). Zero regression.**
+
+> Note on the warning: one `StarletteDeprecationWarning` about httpx/
+> httpx2 in `TestClient` — a pre-existing, unrelated dependency notice,
+> not a test failure.
+
+---
+
+## 4. Verification & Close (INC-8501)
+
+- ✅ Root cause identified (missing `.strip()` + empty→`None` normalization in `_optional_desc`)
+- ✅ Defect reproduced with pre-fix behavior (whitespace-only stored verbatim)
+- ✅ Surgical fix applied to a single helper function in `app/api.py`
+- ✅ 6 new unit tests + 1 new integration test cover create & patch paths
+- ✅ Full suite: **73/73 passed, 0 failed**
+- ✅ No schema/data migration needed (fix is at the API boundary; existing
+  rows with untrimmed data are not retroactively rewritten)
+
+**Conclusion.** The hotfix is **verified and clean**. Both `POST` and
+`PATCH` now strip the issue description and normalize whitespace-only values
+to `None`, satisfying all INC-8501 contract invariants. No follow-up
+actions required.
+
+**Release note.** Ship the `app/api.py` change as a patch. No user-facing
+config or migration. Optionally consider a one-off data cleanup to trim
+pre-existing untrimmed descriptions in production databases.
+
+---
+
 # Incident Hotfix Disposition — INC-8492
 
 | Field | Value |

@@ -717,10 +717,13 @@ def _optional_desc(description):
         return None
     if not isinstance(description, str):
         raise Validation("Invalid field type.", [Detail("description", "Must be a string.")])
-    if len(description) > MAX_DESC:
+    stripped = description.strip()
+    if not stripped:
+        return None
+    if len(stripped) > MAX_DESC:
         raise Validation("Validation error.", [
             Detail("description", f"Must be at most {MAX_DESC} characters.")])
-    return description
+    return stripped
 
 
 # --------------------------------------------------------------------------
