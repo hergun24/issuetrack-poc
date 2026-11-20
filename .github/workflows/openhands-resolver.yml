@@ -1,0 +1,29 @@
+name: "OpenHands Autonomous Issue Resolver"
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  call-openhands-resolver:
+    if: |
+      github.event.label.name == 'agent:run' ||
+      github.event.label.name == 'fix-me' ||
+      (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '@openhands-agent'))
+    uses: All-Hands-AI/openhands-resolver/.github/workflows/openhands-resolver.yml@main
+    with:
+      max_iterations: 50
+      macro: "@openhands-agent"
+    secrets:
+      LLM_MODEL: ${{ secrets.LLM_MODEL }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+      PAT_USERNAME: ${{ secrets.PAT_USERNAME }}
