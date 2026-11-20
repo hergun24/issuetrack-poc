@@ -112,6 +112,14 @@ def health():
 
 
 # --------------------------------------------------------------------------
+# Version
+
+@router.get("/version")
+def version():
+    return {"app": "IssueTrack Lite", "version": "0.2.4", "status": "active"}
+
+
+# --------------------------------------------------------------------------
 # Authentication
 
 @router.post("/auth/register", status_code=201)

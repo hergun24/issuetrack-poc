@@ -1,3 +1,39 @@
+# CHANGE SUMMARY — Issue #5: Add /api/version metadata endpoint
+
+Date: 2026-11-20 (UTC) · Branch: `feat/version-endpoint` · Application: **IssueTrack Lite**
+
+## Scope
+
+New public, unauthenticated endpoint `GET /api/version` that returns
+application version metadata. No other API behavior was changed.
+
+- Response (HTTP 200):
+  ```json
+  {"app": "IssueTrack Lite", "version": "0.2.4", "status": "active"}
+  ```
+- No Bearer token / login required (public).
+
+## Code change
+
+`app/api.py` — new `version()` handler under the existing `/api` router,
+placed alongside the `/health` scaffolding:
+
+```python
+@router.get("/version")
+def version():
+    return {"app": "IssueTrack Lite", "version": "0.2.4", "status": "active"}
+```
+
+## Test evidence
+
+- `tests/test_api_integration.py` — new
+  `test_version_public_unauthenticated`: asserts `GET /api/version`
+  returns HTTP 200 and the exact payload above.
+- Full regression run: all tests pass, zero regressions
+  (`python -m pytest -q`).
+
+---
+
 # CHANGE SUMMARY — Issue #1: Enforce Minimum Length & Whitespace Trimming on Issue Title
 
 Date: 2026-11-20 (UTC) · Branch: `feat/issue-1-title-validation` · Application: **IssueTrack Lite**
