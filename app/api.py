@@ -38,6 +38,7 @@ TYPES = ("BUG", "TASK")
 ROLES = ("ADMIN", "MEMBER")
 
 MAX_ISSUE_TITLE = 200
+MIN_ISSUE_TITLE = 3
 MAX_DESC = 5000
 MAX_PROJECT_DESC = 2000
 MAX_COMMENT_BODY = 2000
@@ -564,7 +565,7 @@ def list_issues(workspace_id: str, request: Request,
 @router.post("/workspaces/{workspace_id}/issues", status_code=201)
 def create_issue(workspace_id: str, payload: IssueCreate, request: Request):
     project_id = validate_id_ref(payload.project_id, "project_id", allow_null=False)
-    title = validate_str(payload.title, "title", 1, MAX_ISSUE_TITLE)
+    title = validate_str(payload.title, "title", MIN_ISSUE_TITLE, MAX_ISSUE_TITLE)
     description = _optional_desc(payload.description)
     itype = validate_enum(payload.type, TYPES, "type", required=False, default="BUG")
     priority = validate_enum(payload.priority, PRIORITIES, "priority", required=False, default="MEDIUM")
@@ -626,7 +627,7 @@ def patch_issue(workspace_id: str, issue_id: str, payload: IssuePatch, request: 
         updates: dict = {}
 
         if "title" in provided:
-            validate_str(payload.title, "title", 1, MAX_ISSUE_TITLE)
+            validate_str(payload.title, "title", MIN_ISSUE_TITLE, MAX_ISSUE_TITLE)
             if payload.title != row["title"]:
                 updates["title"] = payload.title
         if "description" in provided:

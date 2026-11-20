@@ -12,7 +12,7 @@ from app.domain import (
 )
 from app.errors import Validation
 
-from app.api import _overdue, member_out
+from app.api import _overdue, member_out, MIN_ISSUE_TITLE, MAX_ISSUE_TITLE
 
 
 class TestOverdueRule:
@@ -101,6 +101,21 @@ class TestValidators:
             raise AssertionError("should raise")
         except Validation:
             pass
+
+    def test_issue_title_min_length_rule(self):
+        """AC-01: valid titles accepted; AC-02: empty/whitespace/<3 char titles rejected."""
+        assert MIN_ISSUE_TITLE == 3
+        # AC-01: valid titles (>= 3 chars, no leading/trailing whitespace)
+        assert validate_str("Fix login bug", "title", MIN_ISSUE_TITLE, MAX_ISSUE_TITLE) == "Fix login bug"
+        assert validate_str("API", "title", MIN_ISSUE_TITLE, MAX_ISSUE_TITLE) == "API"
+        assert validate_str("abc", "title", MIN_ISSUE_TITLE, MAX_ISSUE_TITLE) == "abc"
+        # AC-02: rejected cases
+        for bad in ("", "   ", "ab", "  x  "):
+            try:
+                validate_str(bad, "title", MIN_ISSUE_TITLE, MAX_ISSUE_TITLE)
+                raise AssertionError(f"should reject {bad!r}")
+            except Validation:
+                pass
 
     def test_validate_enum_default_and_reject(self):
         assert validate_enum(None, ["A", "B"], "f", required=False, default="A") == "A"
