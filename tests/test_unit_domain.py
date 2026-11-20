@@ -12,7 +12,13 @@ from app.domain import (
 )
 from app.errors import Validation
 
-from app.api import _overdue, member_out, MIN_ISSUE_TITLE, MAX_ISSUE_TITLE
+from app.api import (
+    MAX_ISSUE_TITLE,
+    MIN_ISSUE_TITLE,
+    _optional_desc,
+    _overdue,
+    member_out,
+)
 
 
 class TestOverdueRule:
@@ -200,3 +206,47 @@ def test_timestamp_format():
     from app.db import DB
     ts = DB.utcnow_iso()
     assert ts.endswith("Z") and "T" in ts and len(ts) == 20
+
+
+class TestOptionalDescNormalization:
+    """INC-8501 (Issue #3): description must be stripped; whitespace-only -> None.
+
+    - Whitespace-only strings ('   ', '\\t\\n   ') normalize to None.
+    - Untrimmed valid strings are stripped before storage.
+    - Explicit None / omitted remains None.
+    - Internal whitespace is preserved; MAX_DESC limit still enforced.
+    """
+
+    def test_explicit_none_stays_none(self):
+        assert _optional_desc(None) is None
+
+    def test_whitespace_only_normalizes_to_none(self):
+        for ws in ("   ", "\t\n   ", "\n\t \n", " \t "):
+            assert _optional_desc(ws) is None, f"{ws!r} should normalize to None"
+
+    def test_valid_description_trimmed(self):
+        assert _optional_desc("  Fix step 1  ") == "Fix step 1"
+        assert _optional_desc("\tleading and trailing\n") == "leading and trailing"
+        assert _optional_desc("no-extra-space") == "no-extra-space"
+
+    def test_internal_whitespace_preserved(self):
+        assert _optional_desc("a   b") == "a   b"
+        assert _optional_desc("line1\nline2") == "line1\nline2"
+
+    def test_non_string_rejected(self):
+        for bad in (1, ["x"], {"d": 1}, True):
+            try:
+                _optional_desc(bad)
+                raise AssertionError(f"should reject {bad!r}")
+            except Validation:
+                pass
+
+    def test_max_desc_limit_enforced_on_stripped_value(self):
+        # Stripped value at limit: accepted.
+        assert _optional_desc("a" * 5000) == "a" * 5000
+        # Stripped value just over limit: rejected.
+        try:
+            _optional_desc("a" * 5001)
+            raise AssertionError("should reject > MAX_DESC")
+        except Validation:
+            pass

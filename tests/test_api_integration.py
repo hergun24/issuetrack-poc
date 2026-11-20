@@ -409,6 +409,74 @@ def test_issue_create_and_get(env, admin, workspace):
     assert r.status_code == 201
 
 
+def test_issue_description_normalization(env, admin, workspace):
+    """INC-8501 (Issue #3): description stripped; whitespace-only -> None.
+
+    - Whitespace-only descriptions on create/patch store as None.
+    - Untrimmed valid descriptions are trimmed before storage.
+    - Omitted / explicit None stays None; pre-existing valid descriptions preserved.
+    """
+    c, ws, tok = env["client"], workspace, admin[0]
+    proj = _make_project(c, tok, ws)
+    base = {"title": "issue-desc-norm", "project_id": proj["id"]}
+
+    # create: whitespace-only -> None
+    r = c.post(f"/api/workspaces/{ws['id']}/issues",
+               json={**base, "description": "   "}, headers=auth(tok))
+    assert r.status_code == 201, r.text
+    assert r.json()["description"] is None
+
+    r = c.post(f"/api/workspaces/{ws['id']}/issues",
+               json={**base, "description": "\t\n   "}, headers=auth(tok))
+    assert r.status_code == 201, r.text
+    assert r.json()["description"] is None
+
+    # create: untrimmed valid -> trimmed
+    r = c.post(f"/api/workspaces/{ws['id']}/issues",
+               json={**base, "description": "  Fix step 1  "}, headers=auth(tok))
+    assert r.status_code == 201, r.text
+    assert r.json()["description"] == "Fix step 1"
+    iss = r.json()
+
+    # create: omitted -> None
+    r = c.post(f"/api/workspaces/{ws['id']}/issues", json=base, headers=auth(tok))
+    assert r.status_code == 201, r.text
+    assert r.json()["description"] is None
+
+    # create: explicit None -> None
+    r = c.post(f"/api/workspaces/{ws['id']}/issues",
+               json={**base, "description": None}, headers=auth(tok))
+    assert r.status_code == 201, r.text
+    assert r.json()["description"] is None
+
+    patch_url = f"/api/workspaces/{ws['id']}/issues/{iss['id']}"
+
+    # patch: whitespace-only -> None (clears pre-existing description)
+    r = c.patch(patch_url, json={"description": " \t\n "}, headers=auth(tok))
+    assert r.status_code == 200, r.text
+    assert r.json()["description"] is None
+
+    # patch: explicit None -> None
+    r = c.patch(patch_url, json={"description": None}, headers=auth(tok))
+    assert r.status_code == 200, r.text
+    assert r.json()["description"] is None
+
+    # patch: untrimmed valid -> trimmed
+    r = c.patch(patch_url, json={"description": "  second line of details  "},
+                headers=auth(tok))
+    assert r.status_code == 200, r.text
+    assert r.json()["description"] == "second line of details"
+
+    # pre-existing valid description preserved on unrelated patch
+    r = c.patch(patch_url, json={"priority": "HIGH"}, headers=auth(tok))
+    assert r.status_code == 200, r.text
+    assert r.json()["description"] == "second line of details"
+
+    # stored value round-trips via GET
+    got = c.get(patch_url, headers=auth(tok))
+    assert got.status_code == 200 and got.json()["description"] == "second line of details"
+
+
 def test_issue_title_min_length_validation(env, admin, workspace):
     """Issue #1: issue title must have >= 3 non-whitespace chars after strip.
 
